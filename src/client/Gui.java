@@ -127,7 +127,7 @@ public class Gui extends JFrame {
 			public void run() {
 				if (clientInstance != null) {
 					try {
-						clientInstance.downloadFile(Integer.parseInt(selectedClient), inputFileToSearch.getText());
+						clientInstance.downloadFile(Integer.parseInt(selectedClient), inputFileToSearch.getText(),peerFileModel);
 						btnDownload.setEnabled(true);
 						setMessage(green, "Download complete.");
 					} catch (Exception e) {

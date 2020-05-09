@@ -54,7 +54,7 @@ public class Client {
 		getLocalClientFiles(this.shareDir, localClientFiles);
 		clientInterface.updateLocalFiles(localClientFiles);
 		int searchCounter = 0;
-
+                
 		peerFileModel.removeAllElements();
 		neighborClients.clear();
 		threadInstancesList.clear();
@@ -108,10 +108,12 @@ public class Client {
 	}
 
 	// ==Wrapper method to download file.==//
-	public void downloadFile(int clientIDToDownloadFrom, String fileName) throws IOException, NotBoundException {
+	public void downloadFile(int clientIDToDownloadFrom, String fileName,DefaultListModel peerFileModel) throws IOException, NotBoundException, InterruptedException {
 		if (this.searchResults.size() > 0) {
 			download(this.searchResults, clientIDToDownloadFrom, fileName, this.shareDir);
 		}
+                searchFile(fileName,peerFileModel);
+                
 	}
 
 	// ==Method to grab files in client's shared directory.==//
