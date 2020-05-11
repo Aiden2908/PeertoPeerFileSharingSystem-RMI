@@ -9,25 +9,16 @@ import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
-
 import p2p_server.Client;
-
 import java.awt.*;
 import java.awt.event.*;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.rmi.Naming;
 import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 
 public class Gui extends JFrame {
-
+	private static final long serialVersionUID = 1L;
 	// Components of the Form
-	private String connectedPortNum = null;
 	private Container c;
 	private JLabel title;
 	private JLabel lbClientID, lbMessage, lbFileToSearch;
@@ -36,30 +27,18 @@ public class Gui extends JFrame {
 	private JTextField inputPortNum, inputDirectory, inputFileToSearch;
 	private JLabel lbDirectory;
 	private JList clientFileJList, peerFileJList;
-	private JRadioButton male;
-	private JRadioButton female;
-	private ButtonGroup gengp;
-	private JLabel dob;
-	private JComboBox date;
-	private JComboBox month;
-	private JComboBox year;
-	private JLabel add;
-	private JTextArea tadd;
-	private JCheckBox term;
 	private JButton btnConnect, btnSearch;
 	private JButton btnReset, btnBrowse, btnDownload;
-	private JTextArea tout;
-	private JLabel res;
-	private JTextArea resadd;
 	private DefaultListModel clientFileModel, peerFileModel;
-	private Registry rmiRegistry = null;
 	private String selectedClient = null;
 	private Client clientInstance = null;
-	private Color dark = new Color(13, 13, 13), textColor = new Color(153, 153, 153), green = new Color(102, 255, 153),
-			orange = new Color(255, 153, 102), lightBlue = new Color(102, 255, 255);
-
+	private Color dark = new Color(13, 13, 13), textColor = new Color(153, 153, 153), green = new Color(102, 255, 153), orange = new Color(255, 153, 102), lightBlue = new Color(102, 255, 255);
 	private int WINDOW_H = 400, WINDOW_W = 800;
 
+	private boolean onStartup;
+	private int connectClient;
+	Thread t;
+	
 	public Gui() {
 		init();
 		btnDownload.setEnabled(false);
@@ -68,32 +47,42 @@ public class Gui extends JFrame {
 		inputFileToSearch.setEnabled(false);
 	}
 
+	public static void main(String[] args) throws Exception {
+		new Gui();
+	}
+	
 	private void runPeer() throws NumberFormatException, RemoteException {
 		clientInstance = new Client();
-		clientInstance.clientInit(Integer.parseInt(inputPortNum.getText()), Integer.parseInt(inputClientID.getText()),
-				inputDirectory.getText());
+		t = new Thread(clientInstance); // My code -- probably remove
+		t.start();
+		clientInstance.clientInit(Integer.parseInt(inputPortNum.getText()), Integer.parseInt(inputClientID.getText()), inputDirectory.getText(), onStartup, connectClient);
 	}
 
 	private void onBtnConnect() {
 		setMessage(textColor, "connecting....");
 		btnConnect.setEnabled(false);
+		
 		new Thread(new Runnable() {
-
 			@Override
 			public void run() {
 				try {
 					if (btnConnect.getText().equals("Disconnect")) {
-						clientInstance = null;
-						System.exit(0);
+						clientInstance.disconnectClient();
+						clientInstance.setLeader(false);
+						clientInstance.setIsRunning();
+						dispose();
+						return;
 					}
+					
 					runPeer();
 					btnSearch.setEnabled(true);
 					peerFileJList.setEnabled(true);
 					inputFileToSearch.setEnabled(true);
-					setMessage(green, "you are now online.");
+					setMessage(green, "Connected.");
 					btnConnect.setEnabled(true);
 					btnConnect.setText("Disconnect");
 					btnConnect.setForeground(orange);
+					
 				} catch (Exception e) {
 					System.out.println("Error: " + e);
 				}
@@ -122,6 +111,7 @@ public class Gui extends JFrame {
 	private void onBtnDownload() {
 		setMessage(textColor, "Downloading....");
 		btnDownload.setEnabled(false);
+		
 		new Thread(new Runnable() {
 			@Override
 			public void run() {
@@ -341,7 +331,6 @@ public class Gui extends JFrame {
 		});
 
 		c.add(peerFileJList);
-		// c.add(clientFileJList);
 
 		lbFileToSearch = new JLabel("File to search (located in other peers)");
 		lbFileToSearch.setFont(new Font("Arial", Font.PLAIN, 20));
@@ -366,7 +355,6 @@ public class Gui extends JFrame {
 		btnSearch.setFocusPainted(false);
 		btnSearch.setContentAreaFilled(false);
 		btnSearch.addActionListener(new ActionListener() {
-
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				try {
@@ -380,10 +368,12 @@ public class Gui extends JFrame {
 		setVisible(true);
 	}
 
-	public void setValues_TEST(int ID, int portNum, String dir) {
+	public void setValues_TEST(int ID, int portNum, String dir, Boolean onStartup, int connectClient) {
 		this.inputClientID.setText("" + ID);
 		this.inputPortNum.setText("" + portNum);
 		this.inputDirectory.setText(dir);
+		this.onStartup = onStartup;
+		this.connectClient = connectClient;
 	}
 
 	public void connect_TEST() {
@@ -410,9 +400,4 @@ public class Gui extends JFrame {
 			g.drawRoundRect(x, y, width - 1, height - 1, radius, radius);
 		}
 	}
-
-	public static void main(String[] args) throws Exception {
-		Gui f = new Gui();
-	}
-
 }
