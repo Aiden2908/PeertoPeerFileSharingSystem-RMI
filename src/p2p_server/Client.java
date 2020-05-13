@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.rmi.Naming;
 import java.io.InputStream;
 import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.rmi.NotBoundException;
 import java.io.BufferedOutputStream;
 import java.rmi.RemoteException;
@@ -26,7 +27,8 @@ public class Client implements Runnable {
 	private I_ClientRMI clientInterface;
 	private ArrayList<ClientDetails> searchResults;
 	private ArrayList<NeighbourClient> clientNeighbours = new ArrayList<NeighbourClient>();
-
+	public Registry rmiRegistry; 
+	
 	// ==Method to handle initializing client.==//
 	public void clientInit(int portNum, int clientID, String sharedDir, boolean afterStartup, int connectClient) throws RemoteException {
 		ArrayList<String> localClientFiles = new ArrayList<String>();
@@ -141,7 +143,7 @@ public class Client implements Runnable {
 	// ==Method to handle starting client rmi sub server.==//
 	public void startClientSubServer(int clientID, int portNum, String sharedDir, ArrayList<String> clientLocalFiles) {
 		try {
-			LocateRegistry.createRegistry(portNum);
+			rmiRegistry = LocateRegistry.createRegistry(portNum);
 			clientInterface = new ClientRMI(this, sharedDir, clientID, portNum, clientLocalFiles);
 			Naming.rebind("rmi://localhost:" + portNum + "/subServer", clientInterface);
 			System.out.println("Client " + clientID + "sub-server running on localhost:" + portNum);

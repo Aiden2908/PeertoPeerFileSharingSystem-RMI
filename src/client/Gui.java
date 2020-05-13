@@ -15,6 +15,7 @@ import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 
 public class Gui extends JFrame {
 	private static final long serialVersionUID = 1L;
@@ -70,6 +71,7 @@ public class Gui extends JFrame {
 						clientInstance.disconnectClient();
 						clientInstance.setLeader(false);
 						clientInstance.setIsRunning();
+						UnicastRemoteObject.unexportObject(clientInstance.rmiRegistry, true);
 						dispose();
 						return;
 					}

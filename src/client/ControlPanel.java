@@ -6,6 +6,9 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 import javax.swing.Box;
 import javax.swing.JButton;
@@ -74,16 +77,28 @@ public class ControlPanel extends JPanel {
 					
 					if(myIDInt < 1 || myIDInt > 9 || (myPortInt < 1 || myPortInt > 9)) {
 						errorTextLabel.setText("Ports must be between 1-9 inclusive.");
+					} else if(myIDInt == myPortInt) {
+						errorTextLabel.setText("Cannot connect to yourself.");
 					} else {
-						System.out.println("Creating new client: " + myID);
+						Registry portRegistry = null;
 						
-						Gui client = new Gui();
-						client.setValues_TEST(myIDInt, 8000 + myIDInt , sharedDir, true, myPortInt);
-						client.connect_TEST();
+						try {
+							portRegistry = LocateRegistry.getRegistry(8000 + myPortInt);
+							
+							portRegistry.list();
+							
+							System.out.println("Creating new client: " + myID);
+							
+							Gui client = new Gui();
+							client.setValues_TEST(myIDInt, 8000 + myIDInt , sharedDir, true, myPortInt);
+							client.connect_TEST();
+							errorTextLabel.setText("");
+						} catch (RemoteException e) {
+							errorTextLabel.setText("Registry: 800" + myPortInt + " does not exist.");
+						}
 					}
 				} catch(NumberFormatException e) {
 					errorTextLabel.setText("ID and PORT must be an INTEGER (1-9)");
-					e.printStackTrace();
 				}
 			}
 			
