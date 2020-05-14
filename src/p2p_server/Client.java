@@ -13,7 +13,10 @@ import java.rmi.NotBoundException;
 import java.io.BufferedOutputStream;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.io.File;
 import javax.swing.DefaultListModel;
 
@@ -27,12 +30,15 @@ public class Client implements Runnable {
 	private I_ClientRMI clientInterface;
 	private ArrayList<ClientDetails> searchResults;
 	private ArrayList<NeighbourClient> clientNeighbours = new ArrayList<NeighbourClient>();
+	private HashMap<Integer, Integer> vectorTimestampMap = new HashMap<>();
 	public Registry rmiRegistry; 
 	
 	// ==Method to handle initializing client.==//
 	public void clientInit(int portNum, int clientID, String sharedDir, boolean afterStartup, int connectClient) throws RemoteException {
 		ArrayList<String> localClientFiles = new ArrayList<String>();
 
+		vectorTimestampMap.put(clientID, 0);
+		
 		isRunning = true;
 		
 		this.clientID = clientID;
@@ -73,11 +79,12 @@ public class Client implements Runnable {
 		System.out.println("Enter file name to search: " + searchFileName);
 
 		searchCounter++;
+		
 		String messageID = "Peer1.Search" + searchCounter;
 
 		for(int i = 0; i < clientNeighbours.size(); i++) {
 			System.out.println("Sending request to " + clientNeighbours.get(i).clientID + " (" + clientNeighbours.get(i).ipAddress + ":" + clientNeighbours.get(i).portNum + ")");
-			NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(i).ipAddress, clientNeighbours.get(i).portNum, searchFileName, messageID, clientID, clientNeighbours.get(i).clientID);
+			NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(i).ipAddress, clientNeighbours.get(i).portNum, searchFileName, messageID, clientID, clientNeighbours.get(i).clientID, vectorTimestampMap);
 			Thread threadInstance = new Thread(connectionThread);
 			threadInstance.start();
 			threadInstancesList.add(threadInstance);
@@ -124,6 +131,8 @@ public class Client implements Runnable {
 
 	// ==Method to grab files in client's shared directory.==//
 	public void getLocalClientFiles(String sharedDir, ArrayList<String> clientLocalFiles) {
+		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
+		
 		File file = new File(sharedDir);
 		File newFind;
 		String fileName;
@@ -142,6 +151,7 @@ public class Client implements Runnable {
 
 	// ==Method to handle starting client rmi sub server.==//
 	public void startClientSubServer(int clientID, int portNum, String sharedDir, ArrayList<String> clientLocalFiles) {
+		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
 		try {
 			rmiRegistry = LocateRegistry.createRegistry(portNum);
 			clientInterface = new ClientRMI(this, sharedDir, clientID, portNum, clientLocalFiles);
@@ -154,6 +164,8 @@ public class Client implements Runnable {
 
 	// ==Method to get client's connected neighbours.==//
 	public void getClientsNeighbours(ArrayList<NeighbourClient> neighbourClients, int clientID, boolean afterStartup, int connectClient) throws IOException {
+		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
+		
 		Properties properties = new Properties();
 		String property = null;
 		InputStream inputStream = null;
@@ -178,9 +190,6 @@ public class Client implements Runnable {
 
 			inputStream.close();
 		} else {
-			//List<Thread> threadInstancesList = new ArrayList<Thread>();
-			//ArrayList<NeighborConnection> neighborThreads = new ArrayList<NeighborConnection>();
-			
 			property = "peerid." + clientID + ".neighbors";
 			
 			NeighbourClient nc = new NeighbourClient();
@@ -201,17 +210,16 @@ public class Client implements Runnable {
 			
 			System.out.println("Sending message to " + clientNeighbours.get(0).clientID + " (" + clientNeighbours.get(0).ipAddress + ":" + clientNeighbours.get(0).portNum + ")");
 			
-			NeighborConnection connectionThread = new NeighborConnection(newClient, clientNeighbours.get(0).ipAddress, clientNeighbours.get(0).portNum, "connect", "peerid." + connectClient, true);
+			NeighborConnection connectionThread = new NeighborConnection(newClient, clientNeighbours.get(0).ipAddress, clientNeighbours.get(0).portNum, "connect", "peerid." + connectClient, true, vectorTimestampMap);
 			Thread threadInstance = new Thread(connectionThread);
 			threadInstance.start();
-			//threadInstancesList.add(threadInstance);
-			//neighborThreads.add(connectionThread);
 		}
 	}
 
 	// ==Method to handle downloading files from available clients.==//
-	public void download(ArrayList<ClientDetails> searchResults, int clientID, String fileName, String downloadDir)
-			throws IOException, NotBoundException {
+	public void download(ArrayList<ClientDetails> searchResults, int clientID, String fileName, String downloadDir) throws IOException, NotBoundException {
+		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
+		
 		int numClients;
 		int count = 0;
 		int portNum = 0;
@@ -249,29 +257,36 @@ public class Client implements Runnable {
 	}
 	
 	public void disconnectClient() {
-		NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(0), clientNeighbours.get(0).ipAddress ,clientNeighbours.get(0).portNum, "disconnect", "peerid." + Integer.toString(clientID), isLeader);
+		NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(0), clientNeighbours.get(0).ipAddress ,clientNeighbours.get(0).portNum, "disconnect", "peerid." + Integer.toString(clientID), isLeader, vectorTimestampMap);
 		
 		Thread threadInstance = new Thread(connectionThread);
 		threadInstance.start();
 	}
 	
 	public void setNeighbourList(NeighbourClient newNeighbour) {
+		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
+		
+		System.out.println("Changing client: " + clientID + "s neighbour.");
 		System.out.println("Old client ID: " + clientNeighbours.get(0).clientID);
+		
 		clientNeighbours.clear();
 		clientNeighbours.add(newNeighbour);
+		
 		System.out.println("New client ID: " + clientNeighbours.get(0).clientID);
 	}
 	
 	public void changRobertsStartElection() {
+		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
+		
 		try {
 			Thread.sleep(2000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		// participant <- true
-		// send election message with ownID to next process
+		
 		electionParticipant = true;
-		NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(0), clientNeighbours.get(0).ipAddress, clientNeighbours.get(0).portNum, "election", clientID, true);
+		
+		NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(0), clientNeighbours.get(0).ipAddress, clientNeighbours.get(0).portNum, "election", clientID, true, vectorTimestampMap);
 		Thread threadInstance = new Thread(connectionThread);
 		threadInstance.start();
 	}
@@ -300,21 +315,74 @@ public class Client implements Runnable {
 		isRunning = false;
 	}
 	
+	public HashMap<Integer, Integer> getVectorTimestampMap() {
+		return vectorTimestampMap;
+	}
+	
+	public void setVectorTimestampMap(int clientID, int newValue, boolean toDelete) {
+		if(toDelete) {
+			vectorTimestampMap.remove(clientID);
+			return;
+		}
+		
+		if(vectorTimestampMap.containsKey(clientID)) {
+			vectorTimestampMap.replace(clientID, newValue);
+		} else {
+			vectorTimestampMap.put(clientID, newValue);
+		}
+	}
+	
+	public void handleNewTimestampValues(HashMap<Integer, Integer> incomingMap) {
+		Iterator<?> it = incomingMap.entrySet().iterator();
+		
+		while(it.hasNext()) {
+			Map.Entry incomingPair = (Map.Entry)it.next();
 
+			int incomingKey = (Integer)incomingPair.getKey();
+			int incomingValue = incomingMap.get(incomingPair.getKey());
+			
+			if(vectorTimestampMap.containsKey(incomingKey)) {
+				int myValue = vectorTimestampMap.get((int)incomingPair.getKey());
+				if(incomingValue > myValue) {
+					vectorTimestampMap.replace(incomingKey, incomingValue);
+				}
+			} else {
+				vectorTimestampMap.put(incomingKey, incomingValue);
+			}
+		}
+	}
+	
+	public String mapToString() {
+		String returnString = "Client ID Map: ";
+		
+		Iterator<?> it = vectorTimestampMap.entrySet().iterator();
+		
+		while(it.hasNext()) {
+			Map.Entry incomingPair = (Map.Entry)it.next();
+			
+			returnString += "(" + incomingPair.getKey() + ", " + incomingPair.getValue() + ").";
+		}
+		return returnString;
+	}
+	
 	@Override
 	public void run() {
 		while(isRunning) {
 			try {
-				Thread.sleep(10000);
+				Thread.sleep(15000);
+
+				if(isLeader) {
+					System.out.println("\nSnapshot feature| My id: " + clientID + ", My neighbours id: " + clientNeighbours.get(0).clientID);
+					System.out.println(mapToString());
+					
+					NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(0), clientNeighbours.get(0).ipAddress, clientNeighbours.get(0).portNum, "snapshot", clientID, true, vectorTimestampMap);
+					Thread threadInstance = new Thread(connectionThread);
+					threadInstance.start();
+				}
+				
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			if(isLeader) {
-				System.out.println("\nSnapshot feature| My id: " + clientID + ", My neighbours id: " + clientNeighbours.get(0).clientID);
-				NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(0), clientNeighbours.get(0).ipAddress, clientNeighbours.get(0).portNum, "snapshot", clientID, true);
-				Thread threadInstance = new Thread(connectionThread);
-				threadInstance.start();
-			}
-		} 
+		}
 	}
 }

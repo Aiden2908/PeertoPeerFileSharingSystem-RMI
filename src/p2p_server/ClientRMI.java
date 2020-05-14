@@ -9,6 +9,7 @@ import java.io.Serializable;
 import java.rmi.*;
 import java.rmi.server.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Properties;
 
@@ -50,13 +51,17 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 	}
 
 	// Remote method for handling the search request
-	public HitQuery query(int fromPeerId, String msgId, String filename) throws RemoteException {
+	public HitQuery query(int fromPeerId, String msgId, String filename, HashMap<Integer, Integer> timestampMap) throws RemoteException {
 		ArrayList<NeighbourClient> neighborPeers = theClient.getNeighbourList(); // 
 		ArrayList<ClientDetails> findAt = new ArrayList<ClientDetails>();
 		ArrayList<String> pathTrace = new ArrayList<String>();
 		ArrayList<NeighborConnection> peerThreadsList = new ArrayList<NeighborConnection>();
 		HitQuery hitqueryResult = new HitQuery();
 		Boolean bDuplicate = false;
+		
+		theClient.setVectorTimestampMap(theClient.getClientID(), theClient.getVectorTimestampMap().get(theClient.getClientID()) + 1, false);
+		
+		theClient.handleNewTimestampValues(timestampMap);
 		
 		synchronized (this) {	//prevent searching with the same client again
 			if (this.readMessageIDs.contains(msgId)) {
@@ -105,7 +110,7 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 				
 				System.out.println("FROM: Client " + clientID + ". TO: " + neighborPeers.get(i).clientID);
 				
-				NeighborConnection ths = new NeighborConnection(neighborPeers.get(i).ipAddress, neighborPeers.get(i).portNum, filename, msgId, clientID, neighborPeers.get(i).clientID);
+				NeighborConnection ths = new NeighborConnection(neighborPeers.get(i).ipAddress, neighborPeers.get(i).portNum, filename, msgId, clientID, neighborPeers.get(i).clientID, theClient.getVectorTimestampMap());
 				
 				// Starts thread for the request
 				Thread ts = new Thread(ths);
@@ -181,23 +186,36 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 		}
 	}
 
-	public void changeConnectionConnect(NeighbourClient nc, String searchID) { // Method to edit the ring after connection	
+	public void changeConnectionConnect(NeighbourClient nc, String searchID, HashMap<Integer, Integer> timestampMap) { // Method to edit the ring after connection	
 		System.out.println("Search id: " + searchID);
+		
+		theClient.setVectorTimestampMap(theClient.getClientID(), theClient.getVectorTimestampMap().get(theClient.getClientID()) + 1, false);
+		
+		theClient.handleNewTimestampValues(timestampMap);
+		
 		ArrayList<NeighbourClient> neighborPeers = theClient.getNeighbourList();
 		
 		if(neighborPeers.get(0).clientID.equals(searchID)) { // Change neigbhour
 			theClient.setNeighbourList(nc);
 			
 		} else { // Pass message on to neighbour
-			NeighborConnection connectionThread = new NeighborConnection(nc, neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "connect", searchID, true);
+			NeighborConnection connectionThread = new NeighborConnection(nc, neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "connect", searchID, true, theClient.getVectorTimestampMap());
 			Thread threadInstance = new Thread(connectionThread);
 			threadInstance.start();
 		}
 	}
 	
-	public void changeConnectionDisconnect(NeighbourClient nc, String searchID, boolean isLeader) {
+	public void changeConnectionDisconnect(NeighbourClient nc, String searchID, boolean isLeader, HashMap<Integer, Integer> timestampMap) {
 		ArrayList<NeighbourClient> neighborPeers = theClient.getNeighbourList();
 
+		theClient.setVectorTimestampMap(theClient.getClientID(), theClient.getVectorTimestampMap().get(theClient.getClientID()) + 1, false);
+
+		theClient.setVectorTimestampMap(Integer.parseInt(Character.toString(searchID.charAt(searchID.length()-1))), 0, true);
+		
+		timestampMap.remove(Integer.parseInt(Character.toString(searchID.charAt(searchID.length()-1))));
+		
+		theClient.handleNewTimestampValues(timestampMap);
+		
 		System.out.println("My neighbours ID: " + neighborPeers.get(0).clientID + ", Search ID: " + searchID);
 		
 		if(neighborPeers.get(0).clientID.equals(searchID)) { // Change neigbhour
@@ -207,7 +225,7 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 			}
 			
 		} else { // Pass message on to neighbour
-			NeighborConnection connectionThread = new NeighborConnection(nc, neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "disconnect", searchID, isLeader);
+			NeighborConnection connectionThread = new NeighborConnection(nc, neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "disconnect", searchID, isLeader, theClient.getVectorTimestampMap());
 			Thread threadInstance = new Thread(connectionThread);
 			threadInstance.start();
 		}
@@ -224,20 +242,26 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
     }
     
 	
-	public void changRobertsRecieveMessage(String message, int sendingClientID) {
+	public void changRobertsRecieveMessage(String message, int sendingClientID, HashMap<Integer, Integer> timestampMap) {
 		ArrayList<NeighbourClient> neighborPeers = theClient.getNeighbourList();
 		theClient.setLeader(false);
 
+		theClient.setVectorTimestampMap(theClient.getClientID(), theClient.getVectorTimestampMap().get(theClient.getClientID()) + 1, false);
+		
+		theClient.handleNewTimestampValues(timestampMap);
+		
 		if(message.equals("election")) {
 			if(sendingClientID > clientID) {
 				theClient.setParticipated(true);
-				NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "election", sendingClientID, true);
+				NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "election", sendingClientID, true, theClient.getVectorTimestampMap());
 				Thread threadInstance = new Thread(connectionThread);
 				threadInstance.start();
+				
 			} else if(sendingClientID == clientID) {
-				NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "leader", clientID, true);
+				NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "leader", clientID, true, theClient.getVectorTimestampMap());
 				Thread threadInstance = new Thread(connectionThread);
 				threadInstance.start();
+				
 			} else if(sendingClientID < clientID) {
 				if(!theClient.getParticipated()) {
 					theClient.changRobertsStartElection();
@@ -246,9 +270,10 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 		} else if(message.equals("leader")) {
 			theClient.setParticipated(false);
 			if(sendingClientID != clientID) {
-				NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "leader", sendingClientID, true);
+				NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "leader", sendingClientID, true, theClient.getVectorTimestampMap());
 				Thread threadInstance = new Thread(connectionThread);
 				threadInstance.start();
+				
 			} else {
 				System.out.println("New leader is: " + clientID);
 				theClient.setLeader(true);
@@ -258,12 +283,18 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 		}
 	}
 	
-	public void printNeighbour(int sendingClientID) {
+	public void printNeighbour(int sendingClientID, HashMap<Integer, Integer> timestampMap) {
 		ArrayList<NeighbourClient> neighborPeers = theClient.getNeighbourList();
 		
+		theClient.setVectorTimestampMap(theClient.getClientID(), theClient.getVectorTimestampMap().get(theClient.getClientID()) + 1, false);
+		
+		theClient.handleNewTimestampValues(timestampMap);
+
 		if(clientID != sendingClientID) {
 			System.out.println("Snapshot feature| My id: " + clientID + ", My neighbours id: " + neighborPeers.get(0).clientID);
-			NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "snapshot", sendingClientID, true);
+			System.out.println(theClient.mapToString());
+			
+			NeighborConnection connectionThread = new NeighborConnection(neighborPeers.get(0), neighborPeers.get(0).ipAddress, neighborPeers.get(0).portNum, "snapshot", sendingClientID, true, theClient.getVectorTimestampMap());
 			Thread threadInstance = new Thread(connectionThread);
 			threadInstance.start();
 		}
