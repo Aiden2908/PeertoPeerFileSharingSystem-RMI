@@ -17,6 +17,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
+// A class which loads default clients and opens a panel for creating a new client
 public class ControlPanel extends JPanel {
 	private static final long serialVersionUID = 1L;
 	

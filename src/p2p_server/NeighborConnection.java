@@ -24,7 +24,8 @@ public class NeighborConnection extends Thread {
 	HitQuery hitQueryResult = new HitQuery();
 	private NeighbourClient nc;
 	
-	public NeighborConnection(String ipAddress, int portNum, String fileName, String messageID, int fromClientID, String toClientID, HashMap<Integer, Integer> timestampMap) { // Used for searching
+	// neighbour connection used when searching for a client
+	public NeighborConnection(String ipAddress, int portNum, String fileName, String messageID, int fromClientID, String toClientID, HashMap<Integer, Integer> timestampMap) {
 		this.ipAddress = ipAddress;
 		this.portNum = portNum;
 		this.fromClientID = fromClientID;
@@ -35,7 +36,8 @@ public class NeighborConnection extends Thread {
 		this.timestampMap = timestampMap;
 	}
 	
-	public NeighborConnection(NeighbourClient nc, String ipAddress, int portNum, String messageType, String searchID, boolean isLeader, HashMap<Integer, Integer> timestampMap) { // Used for updating ring
+	// neighbour connection used for adding a client
+	public NeighborConnection(NeighbourClient nc, String ipAddress, int portNum, String messageType, String searchID, boolean isLeader, HashMap<Integer, Integer> timestampMap) {
 		this.ipAddress = ipAddress;
 		this.portNum = portNum;
 		this.messageType = messageType;
@@ -45,7 +47,8 @@ public class NeighborConnection extends Thread {
 		this.timestampMap = timestampMap;
 	}
 	
-	public NeighborConnection(NeighbourClient nc, String ipAddress, int portNum, String messageType, int searchIDint, boolean isLeader, HashMap<Integer, Integer> timestampMap) { // Used for updating ring
+	// neighbour client used for disconnecting a client
+	public NeighborConnection(NeighbourClient nc, String ipAddress, int portNum, String messageType, int searchIDint, boolean isLeader, HashMap<Integer, Integer> timestampMap) {
 		this.ipAddress = ipAddress;
 		this.portNum = portNum;
 		this.messageType = messageType;
@@ -59,7 +62,8 @@ public class NeighborConnection extends Thread {
 	public void run() {
 		I_ClientRMI client = null;
 		
-		if(messageType.equals("connect")) { // connection a new client
+		// connecting a new client
+		if(messageType.equals("connect")) {
 			try {
 				client = (I_ClientRMI) Naming.lookup("rmi://" + ipAddress + ":" + portNum + "/subServer");
 				client.changeConnectionConnect(nc, searchID, timestampMap);
@@ -67,8 +71,8 @@ public class NeighborConnection extends Thread {
 			} catch (MalformedURLException | RemoteException | NotBoundException e) {
 				System.out.println("Unable to connect to " + toClientID + " : " + e.getMessage());
 			}
-			
-		} else if(messageType.equals("disconnect")) { // disconnecting a client
+			 // disconnecting a client
+		} else if(messageType.equals("disconnect")) {
 			try {
 				client = (I_ClientRMI) Naming.lookup("rmi://" + ipAddress + ":" + portNum + "/subServer");
 				client.changeConnectionDisconnect(nc, searchID, isLeader, timestampMap);
@@ -76,8 +80,8 @@ public class NeighborConnection extends Thread {
 			} catch (MalformedURLException | RemoteException | NotBoundException e) {
 				System.out.println("Unable to connect to " + toClientID + " : " + e.getMessage());
 			}
-			
-		} else if (messageType.equals("election") || messageType.equals("leader")) { // electing a new leader
+			 // electing a new leader
+		} else if (messageType.equals("election") || messageType.equals("leader")) {
 			try {
 				client = (I_ClientRMI) Naming.lookup("rmi://" + ipAddress + ":" + portNum + "/subServer");
 				client.changRobertsRecieveMessage(messageType, searchIDint, timestampMap);
@@ -85,8 +89,8 @@ public class NeighborConnection extends Thread {
 			} catch (MalformedURLException | RemoteException | NotBoundException e) {
 				System.out.println("Unable to connect to " + toClientID + " : " + e.getMessage());
 			}
-			
-		} else if (messageType.equals("search")) { // searching for a file
+			 // searching for a file
+		} else if (messageType.equals("search")) {
 			try {
 				client = (I_ClientRMI) Naming.lookup("rmi://" + ipAddress + ":" + portNum + "/subServer");
 				hitQueryResult = client.query(fromClientID, messageID, fileName, timestampMap);
@@ -94,7 +98,8 @@ public class NeighborConnection extends Thread {
 			} catch (MalformedURLException | RemoteException | NotBoundException e) {
 				System.out.println("Unable to connect to " + toClientID + " : " + e.getMessage());
 			}
-		} else if (messageType.equals("snapshot")) { // searching for a file
+			 // searching for a file
+		} else if (messageType.equals("snapshot")) {
 			try {
 				client = (I_ClientRMI) Naming.lookup("rmi://" + ipAddress + ":" + portNum + "/subServer");
 				client.printNeighbour(searchIDint,timestampMap);

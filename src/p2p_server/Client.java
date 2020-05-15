@@ -256,6 +256,7 @@ public class Client implements Runnable {
 		return clientNeighbours;
 	}
 	
+	// Method which sends a message to neighbour in the ring to handing disconnecting of a client
 	public void disconnectClient() {
 		NeighborConnection connectionThread = new NeighborConnection(clientNeighbours.get(0), clientNeighbours.get(0).ipAddress ,clientNeighbours.get(0).portNum, "disconnect", "peerid." + Integer.toString(clientID), isLeader, vectorTimestampMap);
 		
@@ -263,6 +264,7 @@ public class Client implements Runnable {
 		threadInstance.start();
 	}
 	
+	// Method which updates the neighbour of a client when a new client joins the system
 	public void setNeighbourList(NeighbourClient newNeighbour) {
 		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
 		
@@ -275,6 +277,8 @@ public class Client implements Runnable {
 		System.out.println("New client ID: " + clientNeighbours.get(0).clientID);
 	}
 	
+	// Method which sends a message to neighbour when a leader election is occuring
+	// Gets called when a new client joins the ring and when a client leaves the ring
 	public void changRobertsStartElection() {
 		vectorTimestampMap.replace(clientID, vectorTimestampMap.get(clientID) + 1);
 		
@@ -319,6 +323,8 @@ public class Client implements Runnable {
 		return vectorTimestampMap;
 	}
 	
+	// Handles updating the timestamp when an event occurs for the client
+	// also handles removing from the map when a client leaves the system
 	public void setVectorTimestampMap(int clientID, int newValue, boolean toDelete) {
 		if(toDelete) {
 			vectorTimestampMap.remove(clientID);
@@ -332,6 +338,7 @@ public class Client implements Runnable {
 		}
 	}
 	
+	// alg which updates the map checking if the value currently stored for a particular is less than the actual value
 	public void handleNewTimestampValues(HashMap<Integer, Integer> incomingMap) {
 		Iterator<?> it = incomingMap.entrySet().iterator();
 		
@@ -352,6 +359,7 @@ public class Client implements Runnable {
 		}
 	}
 	
+	// Prints out the timestamp map - used for the snapshot feature
 	public String mapToString() {
 		String returnString = "Client ID Map: ";
 		

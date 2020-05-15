@@ -186,6 +186,7 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 		}
 	}
 
+	// method which handles changing a connection when a new client enters the system
 	public void changeConnectionConnect(NeighbourClient nc, String searchID, HashMap<Integer, Integer> timestampMap) { // Method to edit the ring after connection	
 		System.out.println("Search id: " + searchID);
 		
@@ -205,6 +206,7 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 		}
 	}
 	
+	// method which changes the connections of a client after a client disconnects from the system
 	public void changeConnectionDisconnect(NeighbourClient nc, String searchID, boolean isLeader, HashMap<Integer, Integer> timestampMap) {
 		ArrayList<NeighbourClient> neighborPeers = theClient.getNeighbourList();
 
@@ -283,6 +285,7 @@ public class ClientRMI extends UnicastRemoteObject implements I_ClientRMI {
 		}
 	}
 	
+	// used for the snapshot feature, priniting out the snapshot values and then passing message on to neighbour
 	public void printNeighbour(int sendingClientID, HashMap<Integer, Integer> timestampMap) {
 		ArrayList<NeighbourClient> neighborPeers = theClient.getNeighbourList();
 		
